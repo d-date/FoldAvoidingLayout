@@ -28,6 +28,18 @@ struct ChoicesView: View {
 - **Falls back to a plain stack.** Without a fold — every other device, and a flat iPhone Duo — `foldAvoidingLayout` returns an `HStackLayout` / `VStackLayout`. It returns `AnyLayout` either way, so switching keeps the subviews' identity: a text field does not lose focus when the device is folded.
 - **Builds with older Xcode.** The system fold is read with `GeometryProxy.reservedRegions(kind: .division)`, which only exists in the iOS 27.1 SDK. The call is compiled only when SwiftUI is 8.0.85 or later (the iOS 27.1 SDK); older toolchains build and see no fold.
 
+## Where it fits next to ArrangementView
+
+iOS 27.1 adds `ArrangementView`, a container that places a primary and a secondary view by the display's size, the reserved regions and the active fold. Where it fits, consider it first: the system decides the arrangement, including whether each view is shown, and can animate the change between poses.
+
+This package is for what it does not cover:
+
+- **Earlier iOS.** `ArrangementView` needs iOS 27.1. This layout runs from iOS 16 and builds with older SDKs; before iOS 27.1 it is a plain stack.
+- **Inside a scroll view.** Apple advises against putting `ArrangementView` inside `List` or `ScrollView`. Side-by-side choices in a scrolling form are exactly where this layout is used.
+- **Not two views.** `ArrangementView` takes a primary and a secondary. This layout takes any number of subviews: a single one goes on the wider side, and extras share a side.
+
+For two views outside a scroll view on iOS 27.1, reach for `ArrangementView` first, and keep this layout where you need its placement: every subview kept to one side of the fold, at the same width on both sides.
+
 ## Seeing it in the simulator
 
 The iPhone Duo simulator in Xcode 27.1 reports the fold. Fold it in Device Hub and the layout splits; to see where the fold is, draw the division regions over your view:
