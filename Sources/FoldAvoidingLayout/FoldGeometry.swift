@@ -3,10 +3,8 @@ import SwiftUI
 /// The geometry behind keeping content off the fold, over plain rectangles and
 /// ranges.
 ///
-/// `ReservedRegion` has no public initializer, and the iPhone Duo simulator in
-/// the Xcode 27.1 beta reports no reserved regions in any pose. Kept apart from
-/// the system query, this is what unit tests and previews exercise; reading the
-/// real regions is the only part that needs a folded device.
+/// `ReservedRegion` has no public initializer, so this is kept apart from the
+/// system query for unit tests to exercise.
 enum FoldGeometry {
   /// A subview's place along the axis, as an offset from the layout's leading
   /// edge rather than an absolute coordinate, so measuring and placing agree
@@ -131,67 +129,3 @@ enum FoldGeometry {
       .sorted { $0.lowerBound < $1.lowerBound }
   }
 }
-
-extension EnvironmentValues {
-  /// Folds to lay out around in place of the system's, as rectangles in the
-  /// window's coordinate space with their margins included. `nil`, the
-  /// default, reads the system's active division regions.
-  ///
-  /// This is the seam where a fold enters the layout. The iPhone Duo simulator
-  /// in the Xcode 27.1 beta reports no reserved regions, so previews and
-  /// debug launches set this to see the fold-avoiding layout at all.
-  @Entry public var simulatedFolds: [CGRect]? = nil
-}
-
-#if DEBUG && os(iOS)
-  extension View {
-    /// Puts a fold across the middle of the inner display when launched with
-    /// `-SimulateFold YES`, so the fold-avoiding layout can be seen on the
-    /// iPhone Duo simulator, which reports none.
-    ///
-    /// The fold is 40pt wide with its margins, the width reported for iPhone
-    /// Duo's division region; it has not been measured on a device here.
-    public func simulatesFoldFromLaunchArgument() -> some View {
-      modifier(LaunchArgumentFold())
-    }
-  }
-
-  private struct LaunchArgumentFold: ViewModifier {
-    @State private var window: CGRect = .zero
-
-    func body(content: Content) -> some View {
-      if UserDefaults.standard.bool(forKey: "SimulateFold") {
-        content
-          .onGeometryChange(for: CGRect.self) { proxy in
-            // The content sits inside the safe area; the fold is where the
-            // display bends, so measure the whole window.
-            let frame = proxy.frame(in: .global)
-            let insets = proxy.safeAreaInsets
-            return CGRect(
-              x: frame.minX - insets.leading,
-              y: frame.minY - insets.top,
-              width: frame.width + insets.leading + insets.trailing,
-              height: frame.height + insets.top + insets.bottom
-            )
-          } action: { window = $0 }
-          .environment(\.simulatedFolds, fold(in: window))
-      } else {
-        content
-      }
-    }
-
-    /// The fold runs across the middle of the longer side, and only on the
-    /// inner display: the outer display does not bend. The two are told apart
-    /// by shape — the inner one is nearly square (867x635pt), the outer one
-    /// tall and narrow (382x644pt) — since size classes do not separate them
-    /// once the outer display is turned sideways.
-    private func fold(in window: CGRect) -> [CGRect] {
-      let long = max(window.width, window.height)
-      let short = min(window.width, window.height)
-      guard long > 0, short / long > 0.65 else { return [] }
-      return window.width >= window.height
-        ? [CGRect(x: window.midX - 20, y: window.minY, width: 40, height: window.height)]
-        : [CGRect(x: window.minX, y: window.midY - 20, width: window.width, height: 40)]
-    }
-  }
-#endif

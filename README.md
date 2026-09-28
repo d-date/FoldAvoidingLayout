@@ -1,17 +1,14 @@
 # FoldAvoidingLayout
 
-A SwiftUI layout that keeps side-by-side content off the fold of a foldable iPhone, and a way to see it working in the iPhone Duo simulator, which does not report the fold.
+A SwiftUI layout that keeps side-by-side content off the fold of a foldable iPhone.
 
 ```swift
 import FoldAvoidingLayout
 
 struct ChoicesView: View {
-  @Environment(\.simulatedFolds) private var simulatedFolds
-
   var body: some View {
     GeometryReader { geometry in
-      let layout = geometry.foldAvoidingLayout(
-        axis: .horizontal, spacing: 8, simulatedFolds: simulatedFolds)
+      let layout = geometry.foldAvoidingLayout(axis: .horizontal, spacing: 8)
       ScrollView {
         layout {
           PhysicalCardButton()
@@ -33,35 +30,26 @@ struct ChoicesView: View {
 
 ## Seeing it in the simulator
 
-In the Xcode 27.1 beta, the iPhone Duo simulator returns no reserved regions in any pose — closed, open flat or folded — even with `.includeInactive`. The hinge itself is simulated, but no region reaches the app, so fold-avoiding code never runs there. ([Blake Crosley observed the same](https://blakecrosley.com/blog/xcode-27-1-beta-iphone-duo-simulator).) This may change in a later Xcode.
-
-So the fold is injectable. `\.simulatedFolds` takes rectangles in the window's coordinate space, margins included; `nil`, the default, reads the system's active division regions.
-
-**Previews**
+The iPhone Duo simulator in Xcode 27.1 reports the fold. Fold it in Device Hub and the layout splits; to see where the fold is, draw the division regions over your view:
 
 ```swift
-#Preview(traits: .fixedLayout(width: 867, height: 635)) {
-  ChoicesView()
-    .environment(\.simulatedFolds, [CGRect(x: 413.5, y: 0, width: 40, height: 635)])
+content.overlay {
+  GeometryReader { proxy in
+    ForEach(proxy.reservedRegions(kind: .division)) { region in
+      Rectangle()
+        .fill(.orange.opacity(0.3))
+        .frame(width: region.frame.width, height: region.frame.height)
+        .position(x: region.frame.midX, y: region.frame.midY)
+    }
+  }
 }
 ```
 
-**The running app** — apply the modifier near the root and launch with `-SimulateFold YES` (Scheme ▸ Run ▸ Arguments, or `xcrun simctl launch <device> <bundle-id> -SimulateFold YES`):
-
-```swift
-RootView()
-  #if DEBUG && os(iOS)
-    .simulatesFoldFromLaunchArgument()
-  #endif
-```
-
-The modifier is only compiled into debug builds of the package.
-
-It puts a 40pt fold across the middle of the inner display — vertical when it is wider than tall, horizontal otherwise — and none on the outer display. The 40pt is the width reported for iPhone Duo's division region; it has not been measured on a device.
+With the inner display landscape and folded, the region is a 40pt band across the middle with 20pt margins on each side; the layout keeps clear of both.
 
 ## Testing
 
-`ReservedRegion` has no public initializer, so the geometry is exercised through plain rectangles and ranges. The only part left to a folded device is the thin adapter that turns the system's division regions into rectangles. The same approach as [SwiftUICalendar #21](https://github.com/maniramezan/SwiftUICalendar/pull/21).
+`ReservedRegion` has no public initializer, so the geometry is exercised through plain rectangles and ranges; the thin adapter that turns the system's division regions into rectangles is checked in the simulator.
 
 ```
 swift test

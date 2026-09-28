@@ -121,20 +121,12 @@ extension GeometryProxy {
   ///
   /// `AnyLayout` rather than two hierarchies so switching keeps the subviews'
   /// state: a text field does not lose focus when the device is folded.
-  ///
-  /// `simulatedFolds` stands in for the system's folds when set; pass the
-  /// caller's `\.simulatedFolds` environment value.
-  public func foldAvoidingLayout(
-    axis: Axis,
-    spacing: CGFloat,
-    simulatedFolds: [CGRect]?
-  ) -> AnyLayout {
+  public func foldAvoidingLayout(axis: Axis, spacing: CGFloat) -> AnyLayout {
     // Only iOS has a fold to avoid; elsewhere this is a plain stack. The
     // method itself stays available everywhere so multiplatform views do not
     // need their own conditional compilation.
     #if os(iOS)
-      let folds = simulatedFolds.map(localRects) ?? systemFolds()
-      let bands = FoldGeometry.bands(from: folds, axis: axis)
+      let bands = FoldGeometry.bands(from: systemFolds(), axis: axis)
       guard !bands.isEmpty else { return plainLayout(axis: axis, spacing: spacing) }
       return AnyLayout(
         RegionAvoidingLayout(
@@ -151,7 +143,7 @@ extension GeometryProxy {
 
   #if os(iOS)
     /// The system's active folds in this geometry's coordinate space, margins
-    /// included. The only part that needs a folded device to exercise.
+    /// included.
     private func systemFolds() -> [CGRect] {
       // `reservedRegions` exists only in the iOS 27.1 SDK, and `#available`
       // cannot hide a symbol from an older SDK. SwiftUI 8.0.85 is the version
@@ -170,12 +162,6 @@ extension GeometryProxy {
       #else
         return []
       #endif
-    }
-
-    /// `rects` moved from the window's coordinate space into this geometry's.
-    private func localRects(_ rects: [CGRect]) -> [CGRect] {
-      let origin = frame(in: .global).origin
-      return rects.map { $0.offsetBy(dx: -origin.x, dy: -origin.y) }
     }
   #endif
 

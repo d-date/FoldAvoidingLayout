@@ -4,10 +4,8 @@ import Testing
 
 @testable import FoldAvoidingLayout
 
-/// `ReservedRegion` has no public initializer and the iPhone Duo simulator in
-/// the Xcode 27.1 beta reports none, so the fold geometry is exercised through
-/// plain rectangles and ranges. Reading the real regions is the only part left
-/// to a folded device.
+/// `ReservedRegion` has no public initializer, so the fold geometry is
+/// exercised through plain rectangles and ranges.
 @Suite struct FoldGeometryTests {
   // MARK: - bands(from:axis:)
 
